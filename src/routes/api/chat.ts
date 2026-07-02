@@ -32,7 +32,7 @@ ${
         const result = streamText({
           model,
           system,
-          messages: convertToModelMessages(messages),
+          messages: await convertToModelMessages(messages),
         });
 
         return result.toUIMessageStreamResponse();

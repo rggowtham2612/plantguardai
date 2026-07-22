@@ -141,6 +141,12 @@ function SiteHeader() {
             Home
           </Link>
           <Link
+            to="/library"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:block"
+          >
+            Library
+          </Link>
+          <Link
             to="/detect"
             className="inline-flex items-center rounded-lg gradient-brand px-4 py-2 text-sm font-medium text-primary-foreground shadow-glow hover:scale-105 transition-transform"
           >

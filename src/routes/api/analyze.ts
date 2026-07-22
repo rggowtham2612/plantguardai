@@ -5,7 +5,9 @@ import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 
 const AnalysisSchema = z.object({
   isPlant: z.boolean(),
+  issueType: z.enum(["disease", "pest", "healthy", "unknown"]).default("unknown"),
   diseaseName: z.string(),
+  pestName: z.string().nullable().default(null),
   scientificName: z.string().nullable(),
   confidence: z.number(),
   severity: z.enum(["Low", "Medium", "High", "None"]),

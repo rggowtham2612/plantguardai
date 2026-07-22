@@ -5,7 +5,9 @@ import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 
 const AnalysisSchema = z.object({
   isPlant: z.boolean(),
+  issueType: z.enum(["disease", "pest", "healthy", "unknown"]).default("unknown"),
   diseaseName: z.string(),
+  pestName: z.string().nullable().default(null),
   scientificName: z.string().nullable(),
   confidence: z.number(),
   severity: z.enum(["Low", "Medium", "High", "None"]),
@@ -47,11 +49,17 @@ export const Route = createFileRoute("/api/analyze")({
         const gateway = createLovableAiGatewayProvider(key);
         const model = gateway("google/gemini-3-flash-preview");
 
-        const systemPrompt = `You are PlantGuard AI, an expert plant pathologist and agronomist. Analyze the uploaded plant/leaf image and return a strict JSON diagnosis. Be practical, specific, and farmer-friendly. If the image is not a plant, set isPlant=false and fill fields with sensible messages. Always return valid JSON matching the schema. Confidence is 0-100. Severity is one of: Low, Medium, High, None. If plant appears healthy, healthy=true and diseaseName="Healthy".`;
+        const systemPrompt = `You are PlantGuard AI, an expert plant pathologist, entomologist, and agronomist. Analyze the uploaded plant/leaf image and return a strict JSON diagnosis.
+
+Detect BOTH plant diseases (fungal, bacterial, viral, nutrient deficiency) AND pest damage (insects, mites, caterpillars, aphids, whiteflies, borers, leaf miners, etc.). If damage is caused by a pest, set issueType="pest", put the pest common name in pestName, and use diseaseName to describe the damage (e.g. "Aphid infestation"). If it's a disease, set issueType="disease" and pestName=null. If healthy, issueType="healthy", diseaseName="Healthy", pestName=null. If not a plant, isPlant=false and issueType="unknown".
+
+Treatments arrays MUST fit the issue type — for pests include insecticidal soap, neem oil, beneficial insects, traps, targeted insecticides; for diseases include fungicides/bactericides and cultural controls. Be practical, specific, and farmer-friendly. Confidence is 0-100.`;
 
         const schemaDescription = `{
   "isPlant": boolean,
+  "issueType": "disease" | "pest" | "healthy" | "unknown",
   "diseaseName": string,
+  "pestName": string | null,
   "scientificName": string | null,
   "confidence": number (0-100),
   "severity": "Low" | "Medium" | "High" | "None",

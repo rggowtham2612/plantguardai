@@ -109,6 +109,11 @@ function ResultView({ data }: { data: Stored }) {
           <div className="glass rounded-2xl p-6">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Leaf className="h-4 w-4" /> {analysis.cropType || "Unknown crop"}
+              {analysis.issueType && analysis.issueType !== "unknown" && (
+                <Badge variant="outline" className="ml-auto capitalize">
+                  {analysis.issueType}
+                </Badge>
+              )}
             </div>
             <h1 className="mt-2 text-2xl font-bold">
               {healthy ? (
@@ -117,6 +122,11 @@ function ResultView({ data }: { data: Stored }) {
                 analysis.diseaseName
               )}
             </h1>
+            {analysis.pestName && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Pest: <span className="font-medium text-foreground">{analysis.pestName}</span>
+              </p>
+            )}
             {analysis.scientificName && (
               <p className="text-sm italic text-muted-foreground">
                 {analysis.scientificName}

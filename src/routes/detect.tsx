@@ -92,9 +92,18 @@ function DetectPage() {
         throw new Error(t || "Analysis failed");
       }
       const data = (await res.json()) as PlantAnalysis;
+      if (!data.isPlant) {
+        clearInterval(stepTimer);
+        setAnalyzing(false);
+        setStepIndex(0);
+        toast.error("That doesn't look like a plant", {
+          description:
+            "Please upload a clear photo of a plant leaf, stem, or fruit so PlantGuard AI can diagnose it.",
+        });
+        return;
+      }
       clearInterval(stepTimer);
       setStepIndex(STEPS.length - 1);
-      // Pass via sessionStorage
       sessionStorage.setItem(
         "plantguard:analysis",
         JSON.stringify({ analysis: data, image: preview }),

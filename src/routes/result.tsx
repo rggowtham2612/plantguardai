@@ -118,10 +118,49 @@ function ResultView({ data }: { data: Stored }) {
         >
           <ArrowLeft className="h-4 w-4" /> New scan
         </Link>
-        <Badge variant="secondary" className="glass">
-          <Sparkles className="h-3 w-3 mr-1" /> Analysis complete
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Select value={voice} onValueChange={setVoice}>
+            <SelectTrigger className="glass h-9 w-[140px] text-xs">
+              <SelectValue placeholder="Voice" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alloy">Alloy · Neutral</SelectItem>
+              <SelectItem value="nova">Nova · Warm F</SelectItem>
+              <SelectItem value="shimmer">Shimmer · Bright F</SelectItem>
+              <SelectItem value="coral">Coral · Friendly F</SelectItem>
+              <SelectItem value="sage">Sage · Calm</SelectItem>
+              <SelectItem value="onyx">Onyx · Deep M</SelectItem>
+              <SelectItem value="echo">Echo · Clear M</SelectItem>
+              <SelectItem value="ash">Ash · Natural M</SelectItem>
+              <SelectItem value="ballad">Ballad · Storyteller</SelectItem>
+              <SelectItem value="verse">Verse · Expressive</SelectItem>
+              <SelectItem value="fable">Fable · British</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            onClick={() => player.toggle("diagnosis", diagnosisScript, voice)}
+            disabled={player.loadingId === "diagnosis"}
+            className="gradient-brand text-primary-foreground shadow-glow border-0 h-9"
+          >
+            {player.loadingId === "diagnosis" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : player.playingId === "diagnosis" ? (
+              <>
+                <Pause className="h-4 w-4 mr-1" /> Stop
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4 mr-1" /> Read diagnosis
+              </>
+            )}
+          </Button>
+          <Badge variant="secondary" className="glass hidden sm:inline-flex">
+            <Sparkles className="h-3 w-3 mr-1" /> Analysis complete
+          </Badge>
+        </div>
       </div>
+
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Left: image + summary */}

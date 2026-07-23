@@ -20,7 +20,16 @@ import {
   Bot,
   User,
   Loader2,
+  Play,
+  Pause,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { PlantAnalysis } from "./api/analyze";

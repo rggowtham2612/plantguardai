@@ -320,7 +320,16 @@ function Recommendations({ analysis }: { analysis: PlantAnalysis }) {
 
 /* ---------------- Chat ---------------- */
 
-function ChatPanel({ analysis }: { analysis: PlantAnalysis }) {
+function ChatPanel({
+  analysis,
+  voice,
+  player,
+}: {
+  analysis: PlantAnalysis;
+  voice: string;
+  player: TtsPlayer;
+}) {
+
   const diseaseContext = useMemo(
     () =>
       `Disease: ${analysis.diseaseName}\nCrop: ${analysis.cropType}\nSeverity: ${analysis.severity}\nConfidence: ${analysis.confidence}%\nDescription: ${analysis.description}\nSymptoms: ${analysis.symptoms.join("; ")}\nCauses: ${analysis.causes.join("; ")}\nOrganic treatments: ${analysis.organicTreatments.join("; ")}\nChemical treatments: ${analysis.chemicalTreatments.join("; ")}\nPrevention: ${analysis.preventionTips.join("; ")}`,

@@ -105,9 +105,10 @@ function DetectPage() {
       }
       clearInterval(stepTimer);
       setStepIndex(STEPS.length - 1);
+      const entry = addHistory(data, preview);
       sessionStorage.setItem(
         "plantguard:analysis",
-        JSON.stringify({ analysis: data, image: preview }),
+        JSON.stringify({ analysis: data, image: preview, id: entry.id }),
       );
       setTimeout(() => navigate({ to: "/result" }), 500);
     } catch (err) {

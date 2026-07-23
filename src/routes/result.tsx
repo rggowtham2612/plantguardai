@@ -24,8 +24,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { PlantAnalysis } from "./api/analyze";
+import { getHistoryEntry } from "@/lib/history";
+import { z } from "zod";
+
+const searchSchema = z.object({ id: z.string().optional() });
 
 export const Route = createFileRoute("/result")({
+  validateSearch: searchSchema,
   head: () => ({
     meta: [
       { title: "Diagnosis Result — PlantGuard AI" },
@@ -39,9 +44,17 @@ type Stored = { analysis: PlantAnalysis; image: string };
 
 function ResultPage() {
   const navigate = useNavigate();
+  const { id } = Route.useSearch();
   const [data, setData] = useState<Stored | null>(null);
 
   useEffect(() => {
+    if (id) {
+      const entry = getHistoryEntry(id);
+      if (entry) {
+        setData({ analysis: entry.analysis, image: entry.image });
+        return;
+      }
+    }
     const raw = sessionStorage.getItem("plantguard:analysis");
     if (!raw) {
       navigate({ to: "/detect" });
@@ -52,7 +65,7 @@ function ResultPage() {
     } catch {
       navigate({ to: "/detect" });
     }
-  }, [navigate]);
+  }, [navigate, id]);
 
   if (!data) {
     return (

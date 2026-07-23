@@ -353,7 +353,7 @@ function ChatPanel({
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [speakingId, setSpeakingId] = useState<string | null>(null);
+
 
   useEffect(() => {
     inputRef.current?.focus();

@@ -384,19 +384,9 @@ function ChatPanel({
   ];
 
   const speak = (id: string, text: string) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    if (speakingId === id) {
-      window.speechSynthesis.cancel();
-      setSpeakingId(null);
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.rate = 1;
-    u.onend = () => setSpeakingId(null);
-    setSpeakingId(id);
-    window.speechSynthesis.speak(u);
+    player.toggle(id, text, voice);
   };
+
 
   return (
     <motion.div

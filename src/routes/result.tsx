@@ -434,7 +434,7 @@ function ChatPanel({
             key={m.id}
             message={m}
             speak={speak}
-            speakingId={speakingId}
+            speakingId={player.playingId}
           />
         ))}
 

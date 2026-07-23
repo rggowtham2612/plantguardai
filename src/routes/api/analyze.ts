@@ -35,13 +35,33 @@ export const Route = createFileRoute("/api/analyze")({
         const key = process.env.LOVABLE_API_KEY;
         if (!key) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
 
-        const body = (await request.json()) as {
-          image?: string;
-          mimeType?: string;
-        };
-        if (!body.image) return new Response("image required", { status: 400 });
+        const MAX_BYTES = 11 * 1024 * 1024; // ~8MB image + base64 overhead
+        const contentLength = Number(request.headers.get("content-length") ?? 0);
+        if (contentLength && contentLength > MAX_BYTES) {
+          return new Response("Payload too large", { status: 413 });
+        }
 
-        const mimeType = body.mimeType || "image/jpeg";
+        const raw = await request.text();
+        if (raw.length > MAX_BYTES) {
+          return new Response("Payload too large", { status: 413 });
+        }
+
+        let body: { image?: string; mimeType?: string };
+        try {
+          body = JSON.parse(raw);
+        } catch {
+          return new Response("Invalid JSON", { status: 400 });
+        }
+        if (!body.image || typeof body.image !== "string") {
+          return new Response("image required", { status: 400 });
+        }
+        if (body.image.length > MAX_BYTES) {
+          return new Response("Image too large", { status: 413 });
+        }
+
+        const allowedMime = ["image/jpeg", "image/jpg", "image/png"];
+        const mimeType =
+          body.mimeType && allowedMime.includes(body.mimeType) ? body.mimeType : "image/jpeg";
         const dataUrl = body.image.startsWith("data:")
           ? body.image
           : `data:${mimeType};base64,${body.image}`;

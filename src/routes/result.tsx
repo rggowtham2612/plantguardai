@@ -20,7 +20,16 @@ import {
   Bot,
   User,
   Loader2,
+  Play,
+  Pause,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { PlantAnalysis } from "./api/analyze";
@@ -94,6 +103,11 @@ function severityStyles(sev: PlantAnalysis["severity"]) {
 function ResultView({ data }: { data: Stored }) {
   const { analysis, image } = data;
   const healthy = analysis.healthy;
+  const [voice, setVoice] = useState<string>("alloy");
+  const player = useTtsPlayer();
+
+  const diagnosisScript = useMemo(() => buildDiagnosisScript(analysis), [analysis]);
+
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
@@ -104,10 +118,49 @@ function ResultView({ data }: { data: Stored }) {
         >
           <ArrowLeft className="h-4 w-4" /> New scan
         </Link>
-        <Badge variant="secondary" className="glass">
-          <Sparkles className="h-3 w-3 mr-1" /> Analysis complete
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Select value={voice} onValueChange={setVoice}>
+            <SelectTrigger className="glass h-9 w-[140px] text-xs">
+              <SelectValue placeholder="Voice" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alloy">Alloy · Neutral</SelectItem>
+              <SelectItem value="nova">Nova · Warm F</SelectItem>
+              <SelectItem value="shimmer">Shimmer · Bright F</SelectItem>
+              <SelectItem value="coral">Coral · Friendly F</SelectItem>
+              <SelectItem value="sage">Sage · Calm</SelectItem>
+              <SelectItem value="onyx">Onyx · Deep M</SelectItem>
+              <SelectItem value="echo">Echo · Clear M</SelectItem>
+              <SelectItem value="ash">Ash · Natural M</SelectItem>
+              <SelectItem value="ballad">Ballad · Storyteller</SelectItem>
+              <SelectItem value="verse">Verse · Expressive</SelectItem>
+              <SelectItem value="fable">Fable · British</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            onClick={() => player.toggle("diagnosis", diagnosisScript, voice)}
+            disabled={player.loadingId === "diagnosis"}
+            className="gradient-brand text-primary-foreground shadow-glow border-0 h-9"
+          >
+            {player.loadingId === "diagnosis" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : player.playingId === "diagnosis" ? (
+              <>
+                <Pause className="h-4 w-4 mr-1" /> Stop
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4 mr-1" /> Read diagnosis
+              </>
+            )}
+          </Button>
+          <Badge variant="secondary" className="glass hidden sm:inline-flex">
+            <Sparkles className="h-3 w-3 mr-1" /> Analysis complete
+          </Badge>
+        </div>
       </div>
+
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Left: image + summary */}
@@ -180,7 +233,7 @@ function ResultView({ data }: { data: Stored }) {
         {/* Right: details + chat */}
         <div className="lg:col-span-2 space-y-6">
           <Recommendations analysis={analysis} />
-          <ChatPanel analysis={analysis} />
+          <ChatPanel analysis={analysis} voice={voice} player={player} />
         </div>
       </div>
     </main>
@@ -267,7 +320,16 @@ function Recommendations({ analysis }: { analysis: PlantAnalysis }) {
 
 /* ---------------- Chat ---------------- */
 
-function ChatPanel({ analysis }: { analysis: PlantAnalysis }) {
+function ChatPanel({
+  analysis,
+  voice,
+  player,
+}: {
+  analysis: PlantAnalysis;
+  voice: string;
+  player: TtsPlayer;
+}) {
+
   const diseaseContext = useMemo(
     () =>
       `Disease: ${analysis.diseaseName}\nCrop: ${analysis.cropType}\nSeverity: ${analysis.severity}\nConfidence: ${analysis.confidence}%\nDescription: ${analysis.description}\nSymptoms: ${analysis.symptoms.join("; ")}\nCauses: ${analysis.causes.join("; ")}\nOrganic treatments: ${analysis.organicTreatments.join("; ")}\nChemical treatments: ${analysis.chemicalTreatments.join("; ")}\nPrevention: ${analysis.preventionTips.join("; ")}`,
@@ -291,7 +353,7 @@ function ChatPanel({ analysis }: { analysis: PlantAnalysis }) {
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [speakingId, setSpeakingId] = useState<string | null>(null);
+
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -322,19 +384,9 @@ function ChatPanel({ analysis }: { analysis: PlantAnalysis }) {
   ];
 
   const speak = (id: string, text: string) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    if (speakingId === id) {
-      window.speechSynthesis.cancel();
-      setSpeakingId(null);
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.rate = 1;
-    u.onend = () => setSpeakingId(null);
-    setSpeakingId(id);
-    window.speechSynthesis.speak(u);
+    player.toggle(id, text, voice);
   };
+
 
   return (
     <motion.div
@@ -382,7 +434,7 @@ function ChatPanel({ analysis }: { analysis: PlantAnalysis }) {
             key={m.id}
             message={m}
             speak={speak}
-            speakingId={speakingId}
+            speakingId={player.playingId}
           />
         ))}
 
@@ -496,4 +548,106 @@ function ChatMessage({
       </div>
     </div>
   );
+}
+
+/* ---------------- TTS ---------------- */
+
+type TtsPlayer = {
+  playingId: string | null;
+  loadingId: string | null;
+  toggle: (id: string, text: string, voice: string) => void;
+  stop: () => void;
+};
+
+function useTtsPlayer(): TtsPlayer {
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const urlRef = useRef<string | null>(null);
+  const reqRef = useRef(0);
+
+  const stop = () => {
+    reqRef.current++;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
+    if (urlRef.current) {
+      URL.revokeObjectURL(urlRef.current);
+      urlRef.current = null;
+    }
+    setPlayingId(null);
+    setLoadingId(null);
+  };
+
+  const toggle = async (id: string, text: string, voice: string) => {
+    if (playingId === id || loadingId === id) {
+      stop();
+      return;
+    }
+    stop();
+    const myReq = ++reqRef.current;
+    setLoadingId(id);
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text.slice(0, 7500), voice }),
+      });
+      if (!res.ok) throw new Error(`TTS ${res.status}`);
+      const blob = await res.blob();
+      if (myReq !== reqRef.current) return;
+      const url = URL.createObjectURL(blob);
+      urlRef.current = url;
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => {
+        if (myReq === reqRef.current) stop();
+      };
+      audio.onerror = () => {
+        if (myReq === reqRef.current) stop();
+      };
+      setLoadingId(null);
+      setPlayingId(id);
+      await audio.play();
+    } catch (err) {
+      console.error("TTS error", err);
+      if (myReq === reqRef.current) {
+        setLoadingId(null);
+        setPlayingId(null);
+      }
+    }
+  };
+
+  useEffect(() => () => stop(), []);
+
+  return { playingId, loadingId, toggle, stop };
+}
+
+function buildDiagnosisScript(a: PlantAnalysis): string {
+  const parts: string[] = [];
+  if (a.healthy) {
+    parts.push(`Good news — your ${a.cropType || "plant"} looks healthy.`);
+  } else {
+    parts.push(
+      `Diagnosis for your ${a.cropType || "plant"}: ${a.diseaseName}${
+        a.pestName ? `, pest identified as ${a.pestName}` : ""
+      }. Severity is ${a.severity}, with about ${Math.round(a.confidence)} percent confidence.`,
+    );
+  }
+  if (a.description) parts.push(a.description);
+  if (a.symptoms?.length) parts.push(`Key symptoms: ${a.symptoms.slice(0, 5).join("; ")}.`);
+  if (a.causes?.length) parts.push(`Likely causes: ${a.causes.slice(0, 4).join("; ")}.`);
+  if (a.immediateActions?.length)
+    parts.push(`Immediate actions: ${a.immediateActions.slice(0, 5).join("; ")}.`);
+  if (a.organicTreatments?.length)
+    parts.push(`Organic treatments: ${a.organicTreatments.slice(0, 4).join("; ")}.`);
+  if (a.chemicalTreatments?.length)
+    parts.push(`Chemical treatments if needed: ${a.chemicalTreatments.slice(0, 3).join("; ")}.`);
+  if (a.preventionTips?.length)
+    parts.push(`Prevention: ${a.preventionTips.slice(0, 4).join("; ")}.`);
+  if (a.wateringAdvice) parts.push(`Watering: ${a.wateringAdvice}.`);
+  if (a.recoveryTime) parts.push(`Expected recovery time: ${a.recoveryTime}.`);
+  return parts.join(" ");
 }

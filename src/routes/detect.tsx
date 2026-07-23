@@ -5,6 +5,7 @@ import { Upload, Camera, X, ScanLine, Loader2, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { PlantAnalysis } from "./api/analyze";
+import { addHistory } from "@/lib/history";
 
 export const Route = createFileRoute("/detect")({
   head: () => ({

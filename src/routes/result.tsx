@@ -233,7 +233,7 @@ function ResultView({ data }: { data: Stored }) {
         {/* Right: details + chat */}
         <div className="lg:col-span-2 space-y-6">
           <Recommendations analysis={analysis} />
-          <ChatPanel analysis={analysis} />
+          <ChatPanel analysis={analysis} voice={voice} player={player} />
         </div>
       </div>
     </main>

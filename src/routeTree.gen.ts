@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResultRouteImport } from './routes/result'
 import { Route as LibraryRouteImport } from './routes/library'
+import { Route as HistoryRouteImport } from './routes/history'
 import { Route as DetectRouteImport } from './routes/detect'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
@@ -24,6 +25,11 @@ const ResultRoute = ResultRouteImport.update({
 const LibraryRoute = LibraryRouteImport.update({
   id: '/library',
   path: '/library',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DetectRoute = DetectRouteImport.update({
@@ -50,6 +56,7 @@ const ApiAnalyzeRoute = ApiAnalyzeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/detect': typeof DetectRoute
+  '/history': typeof HistoryRoute
   '/library': typeof LibraryRoute
   '/result': typeof ResultRoute
   '/api/analyze': typeof ApiAnalyzeRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/detect': typeof DetectRoute
+  '/history': typeof HistoryRoute
   '/library': typeof LibraryRoute
   '/result': typeof ResultRoute
   '/api/analyze': typeof ApiAnalyzeRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/detect': typeof DetectRoute
+  '/history': typeof HistoryRoute
   '/library': typeof LibraryRoute
   '/result': typeof ResultRoute
   '/api/analyze': typeof ApiAnalyzeRoute
@@ -77,16 +86,25 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/detect'
+    | '/history'
     | '/library'
     | '/result'
     | '/api/analyze'
     | '/api/chat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/detect' | '/library' | '/result' | '/api/analyze' | '/api/chat'
+  to:
+    | '/'
+    | '/detect'
+    | '/history'
+    | '/library'
+    | '/result'
+    | '/api/analyze'
+    | '/api/chat'
   id:
     | '__root__'
     | '/'
     | '/detect'
+    | '/history'
     | '/library'
     | '/result'
     | '/api/analyze'
@@ -96,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DetectRoute: typeof DetectRoute
+  HistoryRoute: typeof HistoryRoute
   LibraryRoute: typeof LibraryRoute
   ResultRoute: typeof ResultRoute
   ApiAnalyzeRoute: typeof ApiAnalyzeRoute
@@ -116,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/library'
       fullPath: '/library'
       preLoaderRoute: typeof LibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/detect': {
@@ -152,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DetectRoute: DetectRoute,
+  HistoryRoute: HistoryRoute,
   LibraryRoute: LibraryRoute,
   ResultRoute: ResultRoute,
   ApiAnalyzeRoute: ApiAnalyzeRoute,

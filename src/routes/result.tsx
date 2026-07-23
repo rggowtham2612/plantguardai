@@ -549,3 +549,105 @@ function ChatMessage({
     </div>
   );
 }
+
+/* ---------------- TTS ---------------- */
+
+type TtsPlayer = {
+  playingId: string | null;
+  loadingId: string | null;
+  toggle: (id: string, text: string, voice: string) => void;
+  stop: () => void;
+};
+
+function useTtsPlayer(): TtsPlayer {
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const urlRef = useRef<string | null>(null);
+  const reqRef = useRef(0);
+
+  const stop = () => {
+    reqRef.current++;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
+    if (urlRef.current) {
+      URL.revokeObjectURL(urlRef.current);
+      urlRef.current = null;
+    }
+    setPlayingId(null);
+    setLoadingId(null);
+  };
+
+  const toggle = async (id: string, text: string, voice: string) => {
+    if (playingId === id || loadingId === id) {
+      stop();
+      return;
+    }
+    stop();
+    const myReq = ++reqRef.current;
+    setLoadingId(id);
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text.slice(0, 7500), voice }),
+      });
+      if (!res.ok) throw new Error(`TTS ${res.status}`);
+      const blob = await res.blob();
+      if (myReq !== reqRef.current) return;
+      const url = URL.createObjectURL(blob);
+      urlRef.current = url;
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => {
+        if (myReq === reqRef.current) stop();
+      };
+      audio.onerror = () => {
+        if (myReq === reqRef.current) stop();
+      };
+      setLoadingId(null);
+      setPlayingId(id);
+      await audio.play();
+    } catch (err) {
+      console.error("TTS error", err);
+      if (myReq === reqRef.current) {
+        setLoadingId(null);
+        setPlayingId(null);
+      }
+    }
+  };
+
+  useEffect(() => () => stop(), []);
+
+  return { playingId, loadingId, toggle, stop };
+}
+
+function buildDiagnosisScript(a: PlantAnalysis): string {
+  const parts: string[] = [];
+  if (a.healthy) {
+    parts.push(`Good news — your ${a.cropType || "plant"} looks healthy.`);
+  } else {
+    parts.push(
+      `Diagnosis for your ${a.cropType || "plant"}: ${a.diseaseName}${
+        a.pestName ? `, pest identified as ${a.pestName}` : ""
+      }. Severity is ${a.severity}, with about ${Math.round(a.confidence)} percent confidence.`,
+    );
+  }
+  if (a.description) parts.push(a.description);
+  if (a.symptoms?.length) parts.push(`Key symptoms: ${a.symptoms.slice(0, 5).join("; ")}.`);
+  if (a.causes?.length) parts.push(`Likely causes: ${a.causes.slice(0, 4).join("; ")}.`);
+  if (a.immediateActions?.length)
+    parts.push(`Immediate actions: ${a.immediateActions.slice(0, 5).join("; ")}.`);
+  if (a.organicTreatments?.length)
+    parts.push(`Organic treatments: ${a.organicTreatments.slice(0, 4).join("; ")}.`);
+  if (a.chemicalTreatments?.length)
+    parts.push(`Chemical treatments if needed: ${a.chemicalTreatments.slice(0, 3).join("; ")}.`);
+  if (a.preventionTips?.length)
+    parts.push(`Prevention: ${a.preventionTips.slice(0, 4).join("; ")}.`);
+  if (a.wateringAdvice) parts.push(`Watering: ${a.wateringAdvice}.`);
+  if (a.recoveryTime) parts.push(`Expected recovery time: ${a.recoveryTime}.`);
+  return parts.join(" ");
+}

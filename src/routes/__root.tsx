@@ -87,10 +87,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         property: "og:description",
         content:
-          "Instant plant disease diagnosis and treatment plans powered by AI. Built for modern farmers.",
+          "Upload a leaf image and receive instant AI disease diagnosis, treatment recommendations, and prevention tips for your crops.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "PlantGuard AI — AI-powered crop disease detection" },
+      { name: "twitter:description", content: "Upload a leaf image and receive instant AI disease diagnosis, treatment recommendations, and prevention tips for your crops." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ef7b639b-2631-4710-b3c6-4bc5fb3516dc/id-preview-0a632581--de4424ff-29c6-44a5-8d83-bcc7f164ff1b.lovable.app-1784767120491.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ef7b639b-2631-4710-b3c6-4bc5fb3516dc/id-preview-0a632581--de4424ff-29c6-44a5-8d83-bcc7f164ff1b.lovable.app-1784767120491.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

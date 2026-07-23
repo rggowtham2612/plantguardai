@@ -5,6 +5,7 @@ import { Upload, Camera, X, ScanLine, Loader2, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { PlantAnalysis } from "./api/analyze";
+import { addHistory } from "@/lib/history";
 
 export const Route = createFileRoute("/detect")({
   head: () => ({
@@ -104,9 +105,10 @@ function DetectPage() {
       }
       clearInterval(stepTimer);
       setStepIndex(STEPS.length - 1);
+      const entry = addHistory(data, preview);
       sessionStorage.setItem(
         "plantguard:analysis",
-        JSON.stringify({ analysis: data, image: preview }),
+        JSON.stringify({ analysis: data, image: preview, id: entry.id }),
       );
       setTimeout(() => navigate({ to: "/result" }), 500);
     } catch (err) {

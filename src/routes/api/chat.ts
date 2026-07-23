@@ -44,6 +44,10 @@ export const Route = createFileRoute("/api/chat")({
           return new Response("diseaseContext too large", { status: 413 });
         }
 
+        const gateway = createLovableAiGatewayProvider(key);
+        const model = gateway("google/gemini-3-flash-preview");
+
+
         const system = `You are PlantGuard AI, a friendly and expert plant pathologist and farming assistant. You help farmers understand crop diseases and get practical, actionable advice. Be concise, warm, and specific. Use short paragraphs and bullet points where helpful. Prefer organic solutions first, then chemical if needed. Always consider farmer safety.
 
 ${

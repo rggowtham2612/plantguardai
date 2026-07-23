@@ -103,6 +103,11 @@ function severityStyles(sev: PlantAnalysis["severity"]) {
 function ResultView({ data }: { data: Stored }) {
   const { analysis, image } = data;
   const healthy = analysis.healthy;
+  const [voice, setVoice] = useState<string>("alloy");
+  const player = useTtsPlayer();
+
+  const diagnosisScript = useMemo(() => buildDiagnosisScript(analysis), [analysis]);
+
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10">

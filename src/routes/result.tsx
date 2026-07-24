@@ -22,7 +22,11 @@ import {
   Loader2,
   Play,
   Pause,
+  Download,
+  Languages,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -101,24 +105,80 @@ function severityStyles(sev: PlantAnalysis["severity"]) {
 }
 
 function ResultView({ data }: { data: Stored }) {
-  const { analysis, image } = data;
+  const { image } = data;
+  const [analysis, setAnalysis] = useState<PlantAnalysis>(data.analysis);
+  const [language, setLanguage] = useState<string>("English");
+  const [translating, setTranslating] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const healthy = analysis.healthy;
   const [voice, setVoice] = useState<string>("alloy");
   const player = useTtsPlayer();
 
   const diagnosisScript = useMemo(() => buildDiagnosisScript(analysis), [analysis]);
 
+  const handleLanguageChange = async (lang: string) => {
+    setLanguage(lang);
+    player.stop();
+    if (lang === "English") {
+      setAnalysis(data.analysis);
+      return;
+    }
+    setTranslating(true);
+    try {
+      const res = await fetch("/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: lang, payload: data.analysis }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const translated = (await res.json()) as PlantAnalysis;
+      setAnalysis({ ...data.analysis, ...translated });
+      toast.success(`Translated to ${lang}`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Translation failed. Showing original.");
+      setLanguage("English");
+      setAnalysis(data.analysis);
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    setDownloading(true);
+    try {
+      await downloadAnalysisPdf(analysis, image);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate PDF");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
         <Link
           to="/detect"
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" /> New scan
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={language} onValueChange={handleLanguageChange} disabled={translating}>
+            <SelectTrigger className="glass h-9 w-[150px] text-xs">
+              <Languages className="h-3.5 w-3.5 mr-1 opacity-70" />
+              <SelectValue placeholder="Language" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px]">
+              {LANGUAGES.map((l) => (
+                <SelectItem key={l} value={l}>
+                  {l}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={voice} onValueChange={setVoice}>
             <SelectTrigger className="glass h-9 w-[140px] text-xs">
               <SelectValue placeholder="Voice" />
@@ -140,7 +200,7 @@ function ResultView({ data }: { data: Stored }) {
           <Button
             size="sm"
             onClick={() => player.toggle("diagnosis", diagnosisScript, voice)}
-            disabled={player.loadingId === "diagnosis"}
+            disabled={player.loadingId === "diagnosis" || translating}
             className="gradient-brand text-primary-foreground shadow-glow border-0 h-9"
           >
             {player.loadingId === "diagnosis" ? (
@@ -155,11 +215,32 @@ function ResultView({ data }: { data: Stored }) {
               </>
             )}
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleDownloadPdf}
+            disabled={downloading || translating}
+            className="glass h-9"
+          >
+            {downloading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-1" /> PDF
+              </>
+            )}
+          </Button>
+          {translating && (
+            <Badge variant="secondary" className="glass">
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Translating…
+            </Badge>
+          )}
           <Badge variant="secondary" className="glass hidden sm:inline-flex">
             <Sparkles className="h-3 w-3 mr-1" /> Analysis complete
           </Badge>
         </div>
       </div>
+
 
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -650,4 +731,167 @@ function buildDiagnosisScript(a: PlantAnalysis): string {
   if (a.wateringAdvice) parts.push(`Watering: ${a.wateringAdvice}.`);
   if (a.recoveryTime) parts.push(`Expected recovery time: ${a.recoveryTime}.`);
   return parts.join(" ");
+}
+
+const LANGUAGES = [
+  "English",
+  "Spanish",
+  "French",
+  "German",
+  "Portuguese",
+  "Italian",
+  "Hindi",
+  "Bengali",
+  "Tamil",
+  "Telugu",
+  "Marathi",
+  "Gujarati",
+  "Punjabi",
+  "Kannada",
+  "Malayalam",
+  "Urdu",
+  "Arabic",
+  "Chinese",
+  "Japanese",
+  "Korean",
+  "Indonesian",
+  "Vietnamese",
+  "Swahili",
+  "Turkish",
+  "Russian",
+];
+
+async function downloadAnalysisPdf(a: PlantAnalysis, image: string) {
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 40;
+  const maxWidth = pageWidth - margin * 2;
+  let y = margin;
+
+  const ensureSpace = (needed: number) => {
+    if (y + needed > pageHeight - margin) {
+      doc.addPage();
+      y = margin;
+    }
+  };
+
+  // Header
+  doc.setFillColor(34, 139, 87);
+  doc.rect(0, 0, pageWidth, 60, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.text("PlantGuard AI — Diagnosis Report", margin, 38);
+  y = 80;
+
+  doc.setTextColor(20, 20, 20);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(new Date().toLocaleString(), margin, y);
+  y += 18;
+
+  // Image
+  if (image) {
+    try {
+      const imgW = 180;
+      const imgH = 180;
+      ensureSpace(imgH + 10);
+      const fmt = image.startsWith("data:image/png") ? "PNG" : "JPEG";
+      doc.addImage(image, fmt, margin, y, imgW, imgH, undefined, "FAST");
+      // Side info
+      const infoX = margin + imgW + 20;
+      let infoY = y + 6;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      const title = a.healthy ? "Plant looks healthy" : a.diseaseName || "Diagnosis";
+      const titleLines = doc.splitTextToSize(title, maxWidth - imgW - 20);
+      doc.text(titleLines, infoX, infoY);
+      infoY += titleLines.length * 18 + 4;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      const meta: string[] = [];
+      if (a.cropType) meta.push(`Crop: ${a.cropType}`);
+      if (a.issueType) meta.push(`Type: ${a.issueType}`);
+      if (a.pestName) meta.push(`Pest: ${a.pestName}`);
+      if (a.scientificName) meta.push(`Scientific: ${a.scientificName}`);
+      meta.push(`Severity: ${a.severity}`);
+      meta.push(`Confidence: ${Math.round(a.confidence)}%`);
+      for (const line of meta) {
+        const wrapped = doc.splitTextToSize(line, maxWidth - imgW - 20);
+        doc.text(wrapped, infoX, infoY);
+        infoY += wrapped.length * 14;
+      }
+      y += imgH + 16;
+    } catch (err) {
+      console.warn("PDF image embed failed", err);
+    }
+  }
+
+  const writeParagraph = (label: string, text?: string) => {
+    if (!text) return;
+    ensureSpace(40);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(label, margin, y);
+    y += 14;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    const lines = doc.splitTextToSize(text, maxWidth);
+    for (const line of lines) {
+      ensureSpace(14);
+      doc.text(line, margin, y);
+      y += 12;
+    }
+    y += 6;
+  };
+
+  const writeList = (label: string, items?: string[]) => {
+    if (!items?.length) return;
+    ensureSpace(30);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(label, margin, y);
+    y += 14;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    for (const item of items) {
+      const lines = doc.splitTextToSize(`• ${item}`, maxWidth);
+      for (const line of lines) {
+        ensureSpace(14);
+        doc.text(line, margin, y);
+        y += 12;
+      }
+    }
+    y += 6;
+  };
+
+  writeParagraph("Description", a.description);
+  writeList("Symptoms", a.symptoms);
+  writeList("Causes", a.causes);
+  writeList("Immediate actions", a.immediateActions);
+  writeList("Organic treatments", a.organicTreatments);
+  writeList("Chemical treatments", a.chemicalTreatments);
+  writeList("Prevention tips", a.preventionTips);
+  writeParagraph("Watering", a.wateringAdvice);
+  writeParagraph("Fertilizer", a.fertilizerAdvice);
+  writeParagraph("Weather considerations", a.weatherConsiderations);
+  writeParagraph("Recovery time", a.recoveryTime);
+
+  // Footer
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(9);
+    doc.setTextColor(120, 120, 120);
+    doc.text(
+      `PlantGuard AI • Page ${i} of ${pageCount}`,
+      pageWidth / 2,
+      pageHeight - 20,
+      { align: "center" },
+    );
+  }
+
+  const safeName = (a.diseaseName || "diagnosis").replace(/[^\w-]+/g, "_").slice(0, 40);
+  doc.save(`plantguard-${safeName}.pdf`);
 }

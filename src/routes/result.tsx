@@ -105,24 +105,80 @@ function severityStyles(sev: PlantAnalysis["severity"]) {
 }
 
 function ResultView({ data }: { data: Stored }) {
-  const { analysis, image } = data;
+  const { image } = data;
+  const [analysis, setAnalysis] = useState<PlantAnalysis>(data.analysis);
+  const [language, setLanguage] = useState<string>("English");
+  const [translating, setTranslating] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const healthy = analysis.healthy;
   const [voice, setVoice] = useState<string>("alloy");
   const player = useTtsPlayer();
 
   const diagnosisScript = useMemo(() => buildDiagnosisScript(analysis), [analysis]);
 
+  const handleLanguageChange = async (lang: string) => {
+    setLanguage(lang);
+    player.stop();
+    if (lang === "English") {
+      setAnalysis(data.analysis);
+      return;
+    }
+    setTranslating(true);
+    try {
+      const res = await fetch("/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: lang, payload: data.analysis }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const translated = (await res.json()) as PlantAnalysis;
+      setAnalysis({ ...data.analysis, ...translated });
+      toast.success(`Translated to ${lang}`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Translation failed. Showing original.");
+      setLanguage("English");
+      setAnalysis(data.analysis);
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    setDownloading(true);
+    try {
+      await downloadAnalysisPdf(analysis, image);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate PDF");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
         <Link
           to="/detect"
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" /> New scan
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={language} onValueChange={handleLanguageChange} disabled={translating}>
+            <SelectTrigger className="glass h-9 w-[150px] text-xs">
+              <Languages className="h-3.5 w-3.5 mr-1 opacity-70" />
+              <SelectValue placeholder="Language" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px]">
+              {LANGUAGES.map((l) => (
+                <SelectItem key={l} value={l}>
+                  {l}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={voice} onValueChange={setVoice}>
             <SelectTrigger className="glass h-9 w-[140px] text-xs">
               <SelectValue placeholder="Voice" />
@@ -144,7 +200,7 @@ function ResultView({ data }: { data: Stored }) {
           <Button
             size="sm"
             onClick={() => player.toggle("diagnosis", diagnosisScript, voice)}
-            disabled={player.loadingId === "diagnosis"}
+            disabled={player.loadingId === "diagnosis" || translating}
             className="gradient-brand text-primary-foreground shadow-glow border-0 h-9"
           >
             {player.loadingId === "diagnosis" ? (
@@ -159,11 +215,32 @@ function ResultView({ data }: { data: Stored }) {
               </>
             )}
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleDownloadPdf}
+            disabled={downloading || translating}
+            className="glass h-9"
+          >
+            {downloading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-1" /> PDF
+              </>
+            )}
+          </Button>
+          {translating && (
+            <Badge variant="secondary" className="glass">
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Translating…
+            </Badge>
+          )}
           <Badge variant="secondary" className="glass hidden sm:inline-flex">
             <Sparkles className="h-3 w-3 mr-1" /> Analysis complete
           </Badge>
         </div>
       </div>
+
 
 
       <div className="grid lg:grid-cols-3 gap-6">

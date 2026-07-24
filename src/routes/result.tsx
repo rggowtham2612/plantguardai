@@ -22,7 +22,11 @@ import {
   Loader2,
   Play,
   Pause,
+  Download,
+  Languages,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,

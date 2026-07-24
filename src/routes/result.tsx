@@ -732,3 +732,166 @@ function buildDiagnosisScript(a: PlantAnalysis): string {
   if (a.recoveryTime) parts.push(`Expected recovery time: ${a.recoveryTime}.`);
   return parts.join(" ");
 }
+
+const LANGUAGES = [
+  "English",
+  "Spanish",
+  "French",
+  "German",
+  "Portuguese",
+  "Italian",
+  "Hindi",
+  "Bengali",
+  "Tamil",
+  "Telugu",
+  "Marathi",
+  "Gujarati",
+  "Punjabi",
+  "Kannada",
+  "Malayalam",
+  "Urdu",
+  "Arabic",
+  "Chinese",
+  "Japanese",
+  "Korean",
+  "Indonesian",
+  "Vietnamese",
+  "Swahili",
+  "Turkish",
+  "Russian",
+];
+
+async function downloadAnalysisPdf(a: PlantAnalysis, image: string) {
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 40;
+  const maxWidth = pageWidth - margin * 2;
+  let y = margin;
+
+  const ensureSpace = (needed: number) => {
+    if (y + needed > pageHeight - margin) {
+      doc.addPage();
+      y = margin;
+    }
+  };
+
+  // Header
+  doc.setFillColor(34, 139, 87);
+  doc.rect(0, 0, pageWidth, 60, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.text("PlantGuard AI — Diagnosis Report", margin, 38);
+  y = 80;
+
+  doc.setTextColor(20, 20, 20);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(new Date().toLocaleString(), margin, y);
+  y += 18;
+
+  // Image
+  if (image) {
+    try {
+      const imgW = 180;
+      const imgH = 180;
+      ensureSpace(imgH + 10);
+      const fmt = image.startsWith("data:image/png") ? "PNG" : "JPEG";
+      doc.addImage(image, fmt, margin, y, imgW, imgH, undefined, "FAST");
+      // Side info
+      const infoX = margin + imgW + 20;
+      let infoY = y + 6;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      const title = a.healthy ? "Plant looks healthy" : a.diseaseName || "Diagnosis";
+      const titleLines = doc.splitTextToSize(title, maxWidth - imgW - 20);
+      doc.text(titleLines, infoX, infoY);
+      infoY += titleLines.length * 18 + 4;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      const meta: string[] = [];
+      if (a.cropType) meta.push(`Crop: ${a.cropType}`);
+      if (a.issueType) meta.push(`Type: ${a.issueType}`);
+      if (a.pestName) meta.push(`Pest: ${a.pestName}`);
+      if (a.scientificName) meta.push(`Scientific: ${a.scientificName}`);
+      meta.push(`Severity: ${a.severity}`);
+      meta.push(`Confidence: ${Math.round(a.confidence)}%`);
+      for (const line of meta) {
+        const wrapped = doc.splitTextToSize(line, maxWidth - imgW - 20);
+        doc.text(wrapped, infoX, infoY);
+        infoY += wrapped.length * 14;
+      }
+      y += imgH + 16;
+    } catch (err) {
+      console.warn("PDF image embed failed", err);
+    }
+  }
+
+  const writeParagraph = (label: string, text?: string) => {
+    if (!text) return;
+    ensureSpace(40);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(label, margin, y);
+    y += 14;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    const lines = doc.splitTextToSize(text, maxWidth);
+    for (const line of lines) {
+      ensureSpace(14);
+      doc.text(line, margin, y);
+      y += 12;
+    }
+    y += 6;
+  };
+
+  const writeList = (label: string, items?: string[]) => {
+    if (!items?.length) return;
+    ensureSpace(30);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(label, margin, y);
+    y += 14;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    for (const item of items) {
+      const lines = doc.splitTextToSize(`• ${item}`, maxWidth);
+      for (const line of lines) {
+        ensureSpace(14);
+        doc.text(line, margin, y);
+        y += 12;
+      }
+    }
+    y += 6;
+  };
+
+  writeParagraph("Description", a.description);
+  writeList("Symptoms", a.symptoms);
+  writeList("Causes", a.causes);
+  writeList("Immediate actions", a.immediateActions);
+  writeList("Organic treatments", a.organicTreatments);
+  writeList("Chemical treatments", a.chemicalTreatments);
+  writeList("Prevention tips", a.preventionTips);
+  writeParagraph("Watering", a.wateringAdvice);
+  writeParagraph("Fertilizer", a.fertilizerAdvice);
+  writeParagraph("Weather considerations", a.weatherConsiderations);
+  writeParagraph("Recovery time", a.recoveryTime);
+
+  // Footer
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(9);
+    doc.setTextColor(120, 120, 120);
+    doc.text(
+      `PlantGuard AI • Page ${i} of ${pageCount}`,
+      pageWidth / 2,
+      pageHeight - 20,
+      { align: "center" },
+    );
+  }
+
+  const safeName = (a.diseaseName || "diagnosis").replace(/[^\w-]+/g, "_").slice(0, 40);
+  doc.save(`plantguard-${safeName}.pdf`);
+}

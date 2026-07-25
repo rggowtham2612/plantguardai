@@ -1038,7 +1038,7 @@ async function downloadAnalysisPdf(a: PlantAnalysis, image: string) {
     const safeName = (a.diseaseName || "diagnosis").replace(/[^\w-]+/g, "_").slice(0, 40);
     doc.save(`plantguard-${safeName}.pdf`);
   } finally {
-    document.body.removeChild(host);
+    document.body.removeChild(iframe);
   }
 }
 

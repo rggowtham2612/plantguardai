@@ -358,6 +358,44 @@ function ResultView({ data }: { data: Stored }) {
           <ChatPanel analysis={analysis} voice={voice} player={player} />
         </div>
       </div>
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-5 pb-3 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-4 w-4" /> PDF Preview — {language}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[70vh] overflow-auto bg-muted/40 p-4">
+            <div
+              className="mx-auto shadow-lg bg-white"
+              style={{ width: 794 }}
+              dangerouslySetInnerHTML={{ __html: previewHtml }}
+            />
+          </div>
+          <DialogFooter className="px-6 py-4 border-t bg-background">
+            <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+              Close
+            </Button>
+            <Button
+              onClick={async () => {
+                await handleDownloadPdf();
+                setPreviewOpen(false);
+              }}
+              disabled={downloading}
+              className="gradient-brand text-primary-foreground border-0"
+            >
+              {downloading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-1" /> Download PDF
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

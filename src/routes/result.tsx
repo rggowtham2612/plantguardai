@@ -168,6 +168,20 @@ function ResultView({ data }: { data: Stored }) {
     }
   };
 
+  const handleOpenPreview = async () => {
+    setPreparingPreview(true);
+    try {
+      await ensurePdfFonts();
+      setPreviewHtml(buildReportHtml(analysis, image));
+      setPreviewOpen(true);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to build preview");
+    } finally {
+      setPreparingPreview(false);
+    }
+  };
+
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 py-10">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-8">

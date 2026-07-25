@@ -244,6 +244,21 @@ function ResultView({ data }: { data: Stored }) {
           <Button
             size="sm"
             variant="outline"
+            onClick={handleOpenPreview}
+            disabled={preparingPreview || translating}
+            className="glass h-9"
+          >
+            {preparingPreview ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Eye className="h-4 w-4 mr-1" /> Preview
+              </>
+            )}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
             onClick={handleDownloadPdf}
             disabled={downloading || translating}
             className="glass h-9"

@@ -936,19 +936,45 @@ function buildReportHtml(a: PlantAnalysis, image: string): string {
 async function downloadAnalysisPdf(a: PlantAnalysis, image: string) {
   await ensurePdfFonts();
 
-  const host = document.createElement("div");
-  host.style.position = "fixed";
-  host.style.left = "-10000px";
-  host.style.top = "0";
-  host.style.width = "794px";
-  host.style.background = "#ffffff";
-  host.innerHTML = buildReportHtml(a, image);
-  document.body.appendChild(host);
+  // Render in an isolated iframe so page CSS (Tailwind v4 oklch tokens) doesn't
+  // leak into html2canvas's computed styles and crash it.
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.left = "-10000px";
+  iframe.style.top = "0";
+  iframe.style.width = "820px";
+  iframe.style.height = "100px";
+  iframe.style.border = "0";
+  document.body.appendChild(iframe);
 
   try {
-    // Wait a tick for images/fonts
-    await new Promise((r) => setTimeout(r, 150));
-    const target = host.firstElementChild as HTMLElement;
+    const doc0 = iframe.contentDocument!;
+    doc0.open();
+    doc0.write(
+      `<!doctype html><html><head><meta charset="utf-8">
+       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&family=Noto+Sans+Tamil:wght@400;700&family=Noto+Sans+Devanagari:wght@400;700&family=Noto+Sans+Bengali:wght@400;700&family=Noto+Sans+Telugu:wght@400;700&family=Noto+Sans+Gujarati:wght@400;700&family=Noto+Sans+Gurmukhi:wght@400;700&family=Noto+Sans+Kannada:wght@400;700&family=Noto+Sans+Malayalam:wght@400;700&family=Noto+Sans+Arabic:wght@400;700&family=Noto+Sans+SC:wght@400;700&family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+KR:wght@400;700&display=swap">
+       <style>html,body{margin:0;padding:0;background:#ffffff;color:#111827;}</style>
+       </head><body></body></html>`,
+    );
+    doc0.close();
+    doc0.body.innerHTML = buildReportHtml(a, image);
+
+    // Wait for fonts + images inside iframe
+    await (doc0 as any).fonts?.ready?.catch?.(() => {});
+    await Promise.all(
+      Array.from(doc0.images).map(
+        (img) =>
+          new Promise<void>((resolve) => {
+            if (img.complete) return resolve();
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+          }),
+      ),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+
+    const target = doc0.body.firstElementChild as HTMLElement;
+    iframe.style.height = target.scrollHeight + "px";
     const canvas = await html2canvas(target, {
       backgroundColor: "#ffffff",
       scale: 2,

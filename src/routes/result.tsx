@@ -119,6 +119,9 @@ function ResultView({ data }: { data: Stored }) {
   const [language, setLanguage] = useState<string>("English");
   const [translating, setTranslating] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string>("");
+  const [preparingPreview, setPreparingPreview] = useState(false);
   const healthy = analysis.healthy;
   const [voice, setVoice] = useState<string>("alloy");
   const player = useTtsPlayer();

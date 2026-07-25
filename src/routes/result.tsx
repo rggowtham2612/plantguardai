@@ -35,6 +35,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { PlantAnalysis } from "./api/analyze";
@@ -111,6 +119,9 @@ function ResultView({ data }: { data: Stored }) {
   const [language, setLanguage] = useState<string>("English");
   const [translating, setTranslating] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string>("");
+  const [preparingPreview, setPreparingPreview] = useState(false);
   const healthy = analysis.healthy;
   const [voice, setVoice] = useState<string>("alloy");
   const player = useTtsPlayer();
@@ -154,6 +165,20 @@ function ResultView({ data }: { data: Stored }) {
       toast.error("Failed to generate PDF");
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleOpenPreview = async () => {
+    setPreparingPreview(true);
+    try {
+      await ensurePdfFonts();
+      setPreviewHtml(buildReportHtml(analysis, image));
+      setPreviewOpen(true);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to build preview");
+    } finally {
+      setPreparingPreview(false);
     }
   };
 
@@ -213,6 +238,21 @@ function ResultView({ data }: { data: Stored }) {
             ) : (
               <>
                 <Play className="h-4 w-4 mr-1" /> Read diagnosis
+              </>
+            )}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleOpenPreview}
+            disabled={preparingPreview || translating}
+            className="glass h-9"
+          >
+            {preparingPreview ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Eye className="h-4 w-4 mr-1" /> Preview
               </>
             )}
           </Button>
@@ -318,6 +358,44 @@ function ResultView({ data }: { data: Stored }) {
           <ChatPanel analysis={analysis} voice={voice} player={player} />
         </div>
       </div>
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-5 pb-3 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-4 w-4" /> PDF Preview — {language}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[70vh] overflow-auto bg-muted/40 p-4">
+            <div
+              className="mx-auto shadow-lg bg-white"
+              style={{ width: 794 }}
+              dangerouslySetInnerHTML={{ __html: previewHtml }}
+            />
+          </div>
+          <DialogFooter className="px-6 py-4 border-t bg-background">
+            <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+              Close
+            </Button>
+            <Button
+              onClick={async () => {
+                await handleDownloadPdf();
+                setPreviewOpen(false);
+              }}
+              disabled={downloading}
+              className="gradient-brand text-primary-foreground border-0"
+            >
+              {downloading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-1" /> Download PDF
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

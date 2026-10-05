@@ -1,3 +1,4 @@
+import { logPaymentRequiredUi } from "@/lib/payment-logging";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
@@ -115,6 +116,7 @@ function DetectPage() {
       clearInterval(stepTimer);
       setAnalyzing(false);
       const msg = err instanceof Error ? err.message : "Something went wrong";
+      logPaymentRequiredUi("DetectPage (analyze toast)", msg);
       toast.error(msg);
     }
   };

@@ -136,6 +136,9 @@ Treatments arrays MUST fit the issue type — for pests include insecticidal soa
           return Response.json(analysis);
         } catch (err) {
           console.error("analyze error", err);
+          const st = (err as { statusCode?: number })?.statusCode;
+          if (st === 402 || /payment required/i.test(String(err))) console.warn("[PaymentRequired][server] /api/analyze upstream status", st);
+          if (st === 402) return new Response("Payment Required: AI credits exhausted", { status: 402 });
           const message = err instanceof Error ? err.message : "Analysis failed";
           return new Response(message, { status: 500 });
         }

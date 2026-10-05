@@ -72,6 +72,7 @@ export const Route = createFileRoute("/api/tts")({
 
         if (!upstream.ok) {
           const errText = await upstream.text().catch(() => "");
+          if (upstream.status === 402) console.warn("[PaymentRequired][server] /api/tts upstream 402", errText.slice(0, 300));
           return new Response(errText || "TTS failed", { status: upstream.status });
         }
 

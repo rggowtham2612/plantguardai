@@ -62,7 +62,13 @@ ${
           messages: await convertToModelMessages(messages),
         });
 
-        return result.toUIMessageStreamResponse();
+        return result.toUIMessageStreamResponse({
+          onError: (err) => {
+            const st = (err as { statusCode?: number })?.statusCode;
+            if (st === 402) console.warn("[PaymentRequired][server] /api/chat upstream 402");
+            return err instanceof Error ? err.message : "Chat failed";
+          },
+        });
       },
     },
   },

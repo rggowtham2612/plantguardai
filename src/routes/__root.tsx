@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { Leaf } from "lucide-react";
+import { installPaymentRequiredLogging } from "@/lib/payment-logging";
 
 function NotFoundComponent() {
   return (
@@ -170,6 +171,7 @@ function SiteHeader() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => installPaymentRequiredLogging(), []);
 
   return (
     <QueryClientProvider client={queryClient}>

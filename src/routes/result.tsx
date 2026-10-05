@@ -1,3 +1,4 @@
+import { logPaymentRequiredUi } from "@/lib/payment-logging";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
@@ -148,6 +149,7 @@ function ResultView({ data }: { data: Stored }) {
       toast.success(`Translated to ${lang}`);
     } catch (err) {
       console.error(err);
+      logPaymentRequiredUi("ResultPage (translate toast)", err instanceof Error ? err.message : err);
       toast.error("Translation failed. Showing original.");
       setLanguage("English");
       setAnalysis(data.analysis);
@@ -508,6 +510,7 @@ function ChatPanel({
   const { messages, sendMessage, status } = useChat({
     id: `chat:${analysis.diseaseName}`,
     transport,
+    onError: (e) => logPaymentRequiredUi("ChatPanel", e.message),
   });
 
   const [input, setInput] = useState("");
@@ -773,6 +776,7 @@ function useTtsPlayer(): TtsPlayer {
       await audio.play();
     } catch (err) {
       console.error("TTS error", err);
+      logPaymentRequiredUi("useTtsPlayer", err instanceof Error ? err.message : err);
       if (myReq === reqRef.current) {
         setLoadingId(null);
         setPlayingId(null);

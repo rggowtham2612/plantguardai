@@ -97,6 +97,9 @@ export const Route = createFileRoute("/api/translate")({
           return Response.json(parsed);
         } catch (err) {
           console.error("translate error", err);
+          const st = (err as { statusCode?: number })?.statusCode;
+          if (st === 402 || /payment required/i.test(String(err))) console.warn("[PaymentRequired][server] /api/translate upstream status", st);
+          if (st === 402) return new Response("Payment Required: AI credits exhausted", { status: 402 });
           const message = err instanceof Error ? err.message : "Translation failed";
           return new Response(message, { status: 500 });
         }
